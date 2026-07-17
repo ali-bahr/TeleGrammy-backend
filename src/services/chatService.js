@@ -34,7 +34,8 @@ const getChatById = async (chatId) => {
   try {
     const chat = await Chat.findById(chatId).populate("lastMessage").populate({
       path: "participants.userId",
-      select: "username email phone picture screenName lastSeen status",
+      select:
+        "username email phone picture screenName lastSeen status lastSeenVisibility contacts",
     });
 
     return chat;
@@ -107,7 +108,7 @@ const getUserChats = async (userId, skip, limit) => {
       )
       .populate(
         "participants.userId",
-        "username email phone picture screenName lastSeen status"
+        "username email phone picture screenName lastSeen status lastSeenVisibility contacts"
       )
       .populate("groupId", "name image description")
       .populate("channelId", "name image description")
@@ -332,6 +333,12 @@ const getChannelChats = async (channelIds) => {
   }).select("_id channelId");
 };
 
+// Returns just the participants of a chat (used by the 1:1 block check).
+const getChatParticipants = async (chatId) => {
+  const chat = await Chat.findById(chatId).select("participants");
+  return chat ? chat.participants : [];
+};
+
 const checkUserParticipant = async (chatId, userId) => {
   const chat = await Chat.findById(chatId);
   if (!chat) {
@@ -474,6 +481,7 @@ module.exports = {
   countUserChats,
   getChatOfChannel,
   getChannelChats,
+  getChatParticipants,
   changeUserRole,
   checkUserParticipant,
   checkUserAdmin,

@@ -4,6 +4,7 @@ const userService = require("../../services/userService");
 const messageServices = require("../../services/messageService");
 const groupServices = require("../../services/groupService");
 const AppError = require("../../errors/appError");
+const {canView} = require("../../utils/visibility");
 
 exports.getChat = catchAsync(async (req, res, next) => {
   const {receiver} = req.query;
@@ -105,7 +106,13 @@ const handlePrivateChat = (chatObj, userId) => {
     email: otherUser.userId.email,
     photo: otherUser.userId.picture,
     status: otherUser.userId.status,
-    lastSeen: otherUser.userId.lastSeen,
+    lastSeen: canView(
+      otherUser.userId,
+      userId,
+      otherUser.userId.lastSeenVisibility
+    )
+      ? otherUser.userId.lastSeen
+      : null,
     joinedAt: otherUser.joinedAt,
     role: otherUser.role,
     lastMessage: chatObj.lastMessage,

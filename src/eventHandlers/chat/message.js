@@ -15,6 +15,7 @@ const {
   checkChannelRules,
 } = require("../utils/utilsFunc");
 const AppError = require("../../errors/appError");
+const {isBlockedBy} = require("../../utils/visibility");
 
 module.exports.sendMessage = function ({io, socket}) {
   return async (payload, callback) => {
@@ -30,7 +31,10 @@ module.exports.sendMessage = function ({io, socket}) {
       const chat = await chatService.getBasicChatById(payload.chatId);
 
       if (!chat.isGroup && !chat.isChannel) {
-        const otherParticipant = chat.participants.find(
+        const participants = await chatService.getChatParticipants(
+          payload.chatId
+        );
+        const otherParticipant = participants.find(
           (p) => p.userId.toString() !== socket.userId
         );
 
@@ -39,23 +43,14 @@ module.exports.sendMessage = function ({io, socket}) {
             otherParticipant.userId,
             "contacts"
           );
-          
-          const currentUserBlocked = currentUser.contacts.find(
-            (contact) => 
-              contact.contactId.toString() === otherParticipant.userId.toString() && 
-              contact.blockDetails.status === "blocked"
-          );
-          
-          const otherUserBlocked = otherUser.contacts.find(
-            (contact) => 
-              contact.contactId.toString() === socket.userId.toString() && 
-              contact.blockDetails.status === "blocked"
-          );
-          
-          if (currentUserBlocked || otherUserBlocked) {
+
+          if (
+            isBlockedBy(currentUser, otherParticipant.userId) ||
+            isBlockedBy(otherUser, socket.userId)
+          ) {
             callback({
               status: "error",
-              message: "Cannot send message. User is blocked."
+              message: "Cannot send message. User is blocked.",
             });
             return;
           }
@@ -212,12 +207,24 @@ module.exports.sendMessage = function ({io, socket}) {
 module.exports.updateMessageViewres = function ({io, socket}) {
   return async (payload) => {
     try {
+      // Clearing the viewer's own unread count happens regardless of settings.
+      await chatService.updateUserSeen(payload.chatId, socket.userId);
+
+      const viewer = await userService.getUserById(
+        socket.userId,
+        "readReceipts"
+      );
+      // Honor the viewer's read-receipts setting: when disabled, keep the read
+      // private — don't record them as a viewer and don't notify the sender.
+      if (viewer && viewer.readReceipts === false) {
+        return;
+      }
+
       const message = await messageService.updateChatViewers(
         payload.chatId,
         payload.messageId,
         socket.userId
       );
-      await chatService.updateUserSeen(payload.chatId, socket.userId);
       logThenEmit(
         socket.userId,
         "message:seen",
