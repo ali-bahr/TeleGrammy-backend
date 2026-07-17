@@ -323,6 +323,15 @@ const getChatOfChannel = async (channelId) => {
   return chat;
 };
 
+
+const getChannelChats = async (channelIds) => {
+  return Chat.find({
+    channelId: {$in: channelIds},
+    isChannel: true,
+    deleted: {$ne: true},
+  }).select("_id channelId");
+};
+
 const checkUserParticipant = async (chatId, userId) => {
   const chat = await Chat.findById(chatId);
   if (!chat) {
@@ -464,6 +473,7 @@ module.exports = {
   createOneToOneChat,
   countUserChats,
   getChatOfChannel,
+  getChannelChats,
   changeUserRole,
   checkUserParticipant,
   checkUserAdmin,

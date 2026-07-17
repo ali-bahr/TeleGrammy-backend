@@ -158,3 +158,25 @@ describe("Find Group", () => {
     expect(result).toEqual(group);
   });
 });
+
+describe("Find Groups By Ids", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  test("Should fetch all groups in a single $in query", async () => {
+    const ids = ["id1", "id2", "id3"];
+    const groups = [
+      {_id: "id1", chatId: "chat1"},
+      {_id: "id2", chatId: "chat2"},
+      {_id: "id3", chatId: "chat3"},
+    ];
+    Group.find.mockReturnValue(groups);
+
+    const result = await groupService.findGroupsByIds(ids);
+
+    expect(result).toEqual(groups);
+    expect(Group.find).toHaveBeenCalledTimes(1);
+    expect(Group.find).toHaveBeenCalledWith({_id: {$in: ids}});
+  });
+});

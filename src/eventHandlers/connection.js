@@ -57,28 +57,20 @@ const joinChatsOfUsers = async (io, socket) => {
 };
 
 const joinGroupChats = async (io, socket) => {
-  const userData = await userService.getUserById(socket.user.id);
-  await Promise.all(
-    userData.groups.map(async (group) => {
-      const groupData = await groupService.findGroupById(group);
-
-      if (groupData) socket.join(`chat:${groupData.chatId}`);
-    })
-  );
+  const userData = await userService.getUserById(socket.user.id, "groups");
+  const groups = await groupService.findGroupsByIds(userData.groups);
+  groups.forEach((groupData) => {
+    socket.join(`chat:${groupData.chatId}`);
+  });
 };
 
 const joinChannelChats = async (io, socket) => {
-  const userData = await userService.getUserById(socket.user.id);
-  await Promise.all(
-    userData.channels.map(async (channelId) => {
-      const chatData = await chatService.getChatOfChannel(channelId);
-
-      if (chatData) {
-        console.log(`Joining user:${socket.user.id} to chat:${chatData.id}`);
-        socket.join(`chat:${chatData.id}`);
-      }
-    })
-  );
+  const userData = await userService.getUserById(socket.user.id, "channels");
+  const chats = await chatService.getChannelChats(userData.channels);
+  chats.forEach((chatData) => {
+    console.log(`Joining user:${socket.user.id} to chat:${chatData.id}`);
+    socket.join(`chat:${chatData.id}`);
+  });
 };
 
 exports.onConnection = async (socket, io, connectedUsers) => {

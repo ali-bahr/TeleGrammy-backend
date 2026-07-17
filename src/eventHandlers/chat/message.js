@@ -23,16 +23,22 @@ module.exports.sendMessage = function ({io, socket}) {
     }
 
     try {
-      const currentUser = await userService.getUserById(socket.userId);
+      const currentUser = await userService.getUserById(
+        socket.userId,
+        "contacts"
+      );
       const chat = await chatService.getBasicChatById(payload.chatId);
-      
+
       if (!chat.isGroup && !chat.isChannel) {
         const otherParticipant = chat.participants.find(
           (p) => p.userId.toString() !== socket.userId
         );
-        
+
         if (otherParticipant) {
-          const otherUser = await userService.getUserById(otherParticipant.userId);
+          const otherUser = await userService.getUserById(
+            otherParticipant.userId,
+            "contacts"
+          );
           
           const currentUserBlocked = currentUser.contacts.find(
             (contact) => 

@@ -74,16 +74,8 @@ module.exports.updateMessageStatus = async (messageId, status) => {
 };
 
 module.exports.updateChatViewers = async (chatId, messageId, viewerId) => {
-  let message = await this.getMessageById(messageId);
-  const lastMessageTimeStamp = message.timestamp;
-
-  // Find all messages in the chat up to the last message timestamp
-  const messages = await Message.find({
-    chatId,
-    timestamp: {
-      $lte: lastMessageTimeStamp,
-    },
-  });
+  const target = await this.getMessageById(messageId);
+  const lastMessageTimeStamp = target.timestamp;
 
   // Retrieve the chat to get the number of participants
   const chat = await Chat.findById(chatId);
@@ -91,32 +83,39 @@ module.exports.updateChatViewers = async (chatId, messageId, viewerId) => {
     throw new Error("Chat not found");
   }
   const numberOfMembers = chat.participants.length;
+  const viewerObjectId = new mongoose.Types.ObjectId(viewerId);
 
-  // Update each message with the viewer information
-  await Promise.all(
-    messages.map(async (mes) => {
-      await mes.updateMessageViewer(viewerId, numberOfMembers);
-    })
-  );
+  // Mark every message up to this timestamp as viewed in one bulk update:
+  // $setUnion adds the viewer without duplicating, and the status becomes
+  // "seen" once enough members have viewed the message.
+  await Message.updateMany({chatId, timestamp: {$lte: lastMessageTimeStamp}}, [
+    {
+      $set: {
+        viewers: {$setUnion: [{$ifNull: ["$viewers", []]}, [viewerObjectId]]},
+      },
+    },
+    {
+      $set: {
+        status: {
+          $cond: [
+            {$gte: [{$size: "$viewers"}, numberOfMembers - 1]},
+            "seen",
+            "$status",
+          ],
+        },
+      },
+    },
+  ]);
 
-  message = await this.getMessageById(messageId);
-  return message;
+  return this.getMessageById(messageId);
 };
 module.exports.updateMessageRecivers = async (
   chatId,
   messageId,
   recieverId
 ) => {
-  let message = await this.getMessageById(messageId);
-  const lastMessageTimeStamp = message.timestamp;
-
-  // Find all messages in the chat up to the last message timestamp
-  const messages = await Message.find({
-    chatId,
-    timestamp: {
-      $lte: lastMessageTimeStamp,
-    },
-  });
+  const target = await this.getMessageById(messageId);
+  const lastMessageTimeStamp = target.timestamp;
 
   // Retrieve the chat to get the number of participants
   const chat = await Chat.findById(chatId);
@@ -124,16 +123,33 @@ module.exports.updateMessageRecivers = async (
     throw new Error("Chat not found");
   }
   const numberOfMembers = chat.participants.length;
+  const recieverObjectId = new mongoose.Types.ObjectId(recieverId);
 
-  // Update each message with the viewer information
-  await Promise.all(
-    messages.map(async (mes) => {
-      await mes.updateMessageRecivers(recieverId, numberOfMembers);
-    })
-  );
+  // Mark every message up to this timestamp as delivered in one bulk update:
+  // $setUnion adds the receiver without duplicating, and the status becomes
+  // "delivered" once enough members have received the message.
+  await Message.updateMany({chatId, timestamp: {$lte: lastMessageTimeStamp}}, [
+    {
+      $set: {
+        recievers: {
+          $setUnion: [{$ifNull: ["$recievers", []]}, [recieverObjectId]],
+        },
+      },
+    },
+    {
+      $set: {
+        status: {
+          $cond: [
+            {$gte: [{$size: "$recievers"}, numberOfMembers - 1]},
+            "delivered",
+            "$status",
+          ],
+        },
+      },
+    },
+  ]);
 
-  message = await this.getMessageById(messageId);
-  return message;
+  return this.getMessageById(messageId);
 };
 
 module.exports.updateMessage = async (payload) => {

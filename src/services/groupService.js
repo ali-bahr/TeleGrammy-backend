@@ -29,6 +29,11 @@ const findGroupById = (groupId) => {
   return Group.findById(groupId);
 };
 
+// Fetch many groups by id in one query.
+const findGroupsByIds = (groupIds) => {
+  return Group.find({_id: {$in: groupIds}});
+};
+
 const findAndUpdateGroup = (groupId, newData, options) => {
   const group = Group.findByIdAndUpdate(groupId, newData, options);
   return group;
@@ -81,6 +86,7 @@ const searchGroup = (filter, select, skip, limit, populatedOptions) => {
 module.exports = {
   createGroup,
   findGroupById,
+  findGroupsByIds,
   deleteGroup,
   findAndUpdateGroup,
   updateParticipant,
