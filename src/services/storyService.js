@@ -1,6 +1,5 @@
 const Story = require("../models/story");
 const User = require("../models/user");
-const {getBasicProfileInfo} = require("./userProfileService");
 const {generateSignedUrl} = require("../middlewares/AWS");
 
 exports.create = async (data) => {
@@ -43,9 +42,39 @@ exports.getStoriesOfContacts = async (id, page, limit) => {
     },
   ]);
 
+  // Fetch every profile (story authors + all viewers) in a single query.
+  const profileIds = [];
+  docs.forEach((user) => {
+    profileIds.push(user._id);
+    (user.stories || []).forEach((story) => {
+      if (story.viewers) {
+        Object.values(story.viewers).forEach((viewer) => {
+          profileIds.push(viewer.viewerId);
+        });
+      }
+    });
+  });
+
+  const profileDocs = await User.find({_id: {$in: profileIds}}).select(
+    "email picture screenName username"
+  );
+  const profilesById = new Map(
+    profileDocs.map((profile) => [
+      profile._id.toString(),
+      {
+        email: profile.email,
+        picture: profile.picture,
+        screenName: profile.screenName,
+        username: profile.username,
+      },
+    ])
+  );
+  const getProfile = (profileId) =>
+    profilesById.get(profileId.toString()) || null;
+
   await Promise.all(
     docs.map(async (user) => {
-      user.profile = await getBasicProfileInfo(user._id);
+      user.profile = getProfile(user._id);
       await Promise.all(
         user.stories.map(async (story) => {
           try {
@@ -57,12 +86,9 @@ exports.getStoriesOfContacts = async (id, page, limit) => {
           }
           story.mediaKey = undefined;
           if (story.viewers) {
-            const arr = Object.values(story.viewers); // Converts viewers (JSON object) to an array of [key, value] pairs
-            await Promise.all(
-              arr.map(async (obj) => {
-                obj.profile = await getBasicProfileInfo(obj.viewerId);
-              })
-            );
+            Object.values(story.viewers).forEach((obj) => {
+              obj.profile = getProfile(obj.viewerId);
+            });
           }
         })
       );
