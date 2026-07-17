@@ -143,7 +143,27 @@ const addMember = (io, socket, connectedUsers) => {
 
       const groupChat = await chatService.getChatById(group.chatId);
 
+      // Respect each target's "who can add me" setting: a regular member may not
+      // add a user who only allows admins to add them.
+      const targets = await userService.searchUsers(
+        {_id: {$in: userIds}},
+        "_id whoCanAddMe"
+      );
+      const whoCanAddMeById = new Map(
+        targets.map((target) => [target._id.toString(), target.whoCanAddMe])
+      );
+
       userIds.forEach((userId) => {
+        if (
+          participantType === "member" &&
+          whoCanAddMeById.get(userId.toString()) === "Admins"
+        ) {
+          throw new AppError(
+            `The user ${userId} only allows admins to add them to groups.`,
+            403
+          );
+        }
+
         let index = group.members.findIndex(
           (member) => member.memberId.toString() === userId.toString()
         );

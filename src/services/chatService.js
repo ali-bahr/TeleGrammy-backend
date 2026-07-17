@@ -34,8 +34,7 @@ const getChatById = async (chatId) => {
   try {
     const chat = await Chat.findById(chatId).populate("lastMessage").populate({
       path: "participants.userId",
-      select:
-        "username email phone picture screenName lastSeen status lastSeenVisibility contacts",
+      select: "username email phone picture screenName lastSeen status",
     });
 
     return chat;

@@ -70,6 +70,25 @@ exports.getChatById = catchAsync(async (req, res, next) => {
     if (user.leftAt) filter.timestamp = {$gte: user.leftAt};
   }
 
+  // Enforce last-seen visibility for the other user in a 1:1 chat.
+  if (!chat.isGroup && !chat.isChannel && chat.participants.length === 2) {
+    const otherParticipant = chat.participants.find(
+      (participant) => participant.userId._id.toString() !== req.user.id
+    );
+    if (otherParticipant) {
+      const otherUser = await userService.getUserById(
+        otherParticipant.userId._id,
+        "lastSeenVisibility contacts"
+      );
+      if (
+        otherUser &&
+        !canView(otherUser, req.user.id, otherUser.lastSeenVisibility)
+      ) {
+        otherParticipant.userId.lastSeen = null;
+      }
+    }
+  }
+
   // Fetch messages related to this chat with pagination
   const messages = await messageServices.fetchChatMessages(
     id,
