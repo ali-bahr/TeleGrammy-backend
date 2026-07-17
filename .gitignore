@@ -97,3 +97,6 @@ dist
 
 test.js
 src/telegrammy-firebase.json
+
+# Local, private interview-prep / contribution notes (Phase 1 deliverable — not versioned)
+telegrammy_docs/
