@@ -166,7 +166,6 @@ const updateLastMessage = async (chatId, messageId) => {
       {lastMessageTimestamp: Date.now()},
       {new: true}
     );
-    console.log("updating Last Message: ", chat);
     if (!chat) throw new Error("Chat not found");
     return chat;
   } catch (error) {
@@ -184,7 +183,6 @@ const updateLastMessage = async (chatId, messageId) => {
  * @returns {Promise<Chat|null>} - A promise that resolves to the updated chat if successful, otherwise null.
  */
 const addParticipant = async (chatId, participantData) => {
-  console.log("Adding Participant");
   try {
     const chat = await Chat.findByIdAndUpdate(
       chatId,

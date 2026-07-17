@@ -41,7 +41,6 @@ module.exports.ackEvent = function ({io, socket}) {
 module.exports.sendMissedEvents = async ({io, userId, chatId, offset}) => {
   if (offset === undefined) offset = 0;
   const missedEvents = await eventService.getEvents(chatId, offset);
-  // console.log(missedEvents);
   missedEvents.forEach((event) => {
     io.to(`${userId}`).emit(event.name, {
       ...event.payload,

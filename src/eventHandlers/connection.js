@@ -68,17 +68,13 @@ const joinChannelChats = async (io, socket) => {
   const userData = await userService.getUserById(socket.user.id, "channels");
   const chats = await chatService.getChannelChats(userData.channels);
   chats.forEach((chatData) => {
-    console.log(`Joining user:${socket.user.id} to chat:${chatData.id}`);
     socket.join(`chat:${chatData.id}`);
   });
 };
 
 exports.onConnection = async (socket, io, connectedUsers) => {
   try {
-    console.log("User connected:", socket.id);
-
     socket.userId = socket.user.id;
-    console.log("User id connected:", socket.userId);
 
     if (connectedUsers.get(socket.userId))
       connectedUsers.get(socket.userId).set("chat", socket);
@@ -92,7 +88,6 @@ exports.onConnection = async (socket, io, connectedUsers) => {
     }
 
     socket.on("message:test", (payload, callback) => {
-      console.log("Received 'message:test' event from client:", payload);
       if (callback) {
         callback({status: "success", message: "Voice note received"});
       }
@@ -117,7 +112,6 @@ exports.onConnection = async (socket, io, connectedUsers) => {
     socket.on("call:addIce", addIce({socket, io}));
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
       connectedUsers.get(socket.userId).delete("chat");
     });
   } catch (e) {
