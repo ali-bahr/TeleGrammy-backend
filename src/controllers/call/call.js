@@ -43,8 +43,7 @@ module.exports.joinCall = catchAsync(async (req, res, next) => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     for (const [outerKey, innerObject] of Object.entries(call.callObjects)) {
-      for (const [innerKey, data] of Object.entries(innerObject)) {
-        console.log(outerKey, innerKey);
+      for (const [innerKey] of Object.entries(innerObject)) {
         if (req.user.id === innerKey) {
           await sendOfferForUser(ioApp.ioServer, call, outerKey, innerKey);
         }

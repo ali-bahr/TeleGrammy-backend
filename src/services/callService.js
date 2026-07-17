@@ -30,7 +30,6 @@ const callObj = {
 module.exports.addOffer = async ({senderId, recieverId, callId, offer}) => {
   const call = await Call.findById(callId);
   if (!call) throw new Error("Call not found");
-  console.log(call.callObjects, "from send Offer");
   if (
     hasProperty(call.callObjects, recieverId) &&
     hasProperty(call.callObjects[recieverId], senderId)
@@ -99,10 +98,7 @@ module.exports.addIceCandidate = async (
   let call = await Call.findById(callId);
   if (!call) throw new Error("Call not found");
 
-  // these var for console log so  make sure to delete them
-
   let answerIshere = false;
-  console.log(senderId, recieverId);
   if (call.callObjects[senderId] && call.callObjects[senderId][recieverId]) {
     call.callObjects[senderId][recieverId].offererIceCandidates.push(candidate);
     answerIshere = call.callObjects[senderId][recieverId].answer;

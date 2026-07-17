@@ -104,7 +104,6 @@ module.exports.sendOffer = function ({socket, io}) {
         });
       });
     } catch (err) {
-      console.log(err.status, " should be sent");
       callBack({status: err.status || "error", message: err.message});
       handleSocketError(socket, err);
     }
@@ -212,7 +211,6 @@ module.exports.addIce = function ({socket, io}) {
         throw new Error("Can't send ice to yourself");
       }
 
-      console.log("user sent ice: ", socket.userId);
       await withLock(payload.callId, async () => {
         const call = await callService.addIceCandidate(
           senderId,
@@ -251,9 +249,8 @@ module.exports.addIce = function ({socket, io}) {
 };
 
 module.exports.sendIncomingCallForUser = async (io, call, senderId) => {
-  callId = call._id.toString();
+  const callId = call._id.toString();
   await withLock(callId, async () => {
-    console.log("sendIncomingCallForUser have the lock", callId);
     io.to(`${senderId}`).emit("call:incomingCall", call, (data) => {
       if (data.status === "ready") {
         console.log("User Is Ready to receive following events");
@@ -264,15 +261,13 @@ module.exports.sendIncomingCallForUser = async (io, call, senderId) => {
 };
 
 module.exports.sendOfferForUser = async (io, call, senderId, recieverId) => {
-  callId = call._id.toString();
+  const callId = call._id.toString();
   await withLock(callId, async () => {
-    console.log("sending have the lock", callId);
     call.senderId = senderId;
     call.recieverId = recieverId;
     await selectRequiredCallObject(call);
     if (!call.participantsWhoRejected.has(call.recieverId)) {
       io.to(`${recieverId}`).emit("call:incomingOffer", call);
     }
-    console.log("sending LEAVE  the lock");
   });
 };
