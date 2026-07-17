@@ -170,6 +170,22 @@ module.exports.rejectCall = async (callId, userId) => {
 };
 
 module.exports.appendProfilesInfo = async (calls) => {
+  // Collect every participant id across all calls and fetch their profiles in a
+  // single query.
+  const participantIds = [];
+  calls.forEach((call) => {
+    call.chatDetails.participants.forEach((participant) => {
+      participantIds.push(participant.userId);
+    });
+  });
+
+  const users = await User.find({_id: {$in: participantIds}}).select(
+    "_id username picture"
+  );
+  const usersById = new Map(
+    users.map((user) => [user._id.toString(), user])
+  );
+
   await Promise.all(
     calls.map(async (call) => {
       if (call.chatDetails.isGroup) {
@@ -177,9 +193,9 @@ module.exports.appendProfilesInfo = async (calls) => {
           call.chatDetails.groupId
         ).select("name image _id");
       }
-      call.chatDetails.participants = await Promise.all(
-        call.chatDetails.participants.map(async (participant) => {
-          const user = await User.findById(participant.userId);
+      call.chatDetails.participants = call.chatDetails.participants.map(
+        (participant) => {
+          const user = usersById.get(participant.userId.toString());
           if (user) {
             participant.profile = {
               _id: user._id,
@@ -188,7 +204,7 @@ module.exports.appendProfilesInfo = async (calls) => {
             };
           }
           return participant;
-        })
+        }
       );
     })
   );
