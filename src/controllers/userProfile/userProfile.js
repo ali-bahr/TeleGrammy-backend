@@ -5,7 +5,7 @@ const catchAsync = require("../../utils/catchAsync");
 const {generateConfirmationCode} = require("../../utils/codeGenerator");
 const {filterObject, extractProfileInfo} = require("../../utils/utilitiesFunc");
 const AppError = require("../../errors/appError");
-const {getBasicProfileInfo} = require("../../services/userProfileService");
+const {canView} = require("../../utils/visibility");
 
 exports.updateUserEmail = catchAsync(async (req, res, next) => {
   const {email} = req.body;
@@ -212,10 +212,25 @@ exports.updateUserActivity = catchAsync(async (req, res, next) => {
 
 exports.getBasicUserProfileInfo = catchAsync(async (req, res, next) => {
   const {id} = req.params;
-  const profile = await getBasicProfileInfo(id);
-  if (!profile) {
+  const requesterId = req.user.id;
+
+  const target = await userService.getUserById(
+    id,
+    "email picture screenName username profilePictureVisibility contacts"
+  );
+  if (!target) {
     return next(new AppError("User not found", 404));
   }
+
+  const profile = {
+    email: target.email,
+    screenName: target.screenName,
+    username: target.username,
+    picture: canView(target, requesterId, target.profilePictureVisibility)
+      ? target.picture
+      : null,
+  };
+
   return res.status(200).json({
     status: "success",
     data: {profile},

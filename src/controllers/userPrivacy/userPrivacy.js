@@ -80,9 +80,11 @@ const changeBlockingStatus = catchAsync(async (req, res, next) => {
   const {action} = req.params;
 
   if (action !== "block" && action !== "unblock") {
-    return new AppError(
-      "Invalid action. Use 'block' or 'unblock', please check them",
-      400
+    return next(
+      new AppError(
+        "Invalid action. Use 'block' or 'unblock', please check them",
+        400
+      )
     );
   }
 
@@ -164,7 +166,7 @@ const changeGroupControlStatus = catchAsync(async (req, res, next) => {
   const {newPolicy} = req.body;
 
   if (newPolicy !== "Admins" && newPolicy !== "EveryOne") {
-    next(
+    return next(
       new AppError(
         "Invalid action. The value of policy isn't valid, please check them",
         400

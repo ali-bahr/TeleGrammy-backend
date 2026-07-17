@@ -4,6 +4,7 @@ const userService = require("../../services/userService");
 
 const AppError = require("../../errors/appError");
 const catchAsync = require("../../utils/catchAsync");
+const {canView} = require("../../utils/visibility");
 
 exports.createStory = catchAsync(async (req, res, next) => {
   const {content, mediaType} = req.body;
@@ -69,18 +70,20 @@ exports.addStoryOwnerId = catchAsync(async (req, res, next) => {
 });
 
 exports.inContacts = catchAsync(async (req, res, next) => {
-  const user = await userService.getUserById(req.user.id);
-  if (!user) {
-    return next(new AppError("User not found", 404));
-  }
+  const requesterId = req.user.id;
   const storiesOwnerId = req.params.userId || req.storyOwnerId.toString();
   req.storyOwnerId = storiesOwnerId;
 
-  if (
-    !Array.isArray(user.contacts) &&
-    !user.contacts.includes(storiesOwnerId) &&
-    !(storiesOwnerId === req.user.id)
-  ) {
+  // Enforce the story owner's visibility setting against the requester.
+  const owner = await userService.getUserById(
+    storiesOwnerId,
+    "storiesVisibility contacts"
+  );
+  if (!owner) {
+    return next(new AppError("User not found", 404));
+  }
+
+  if (!canView(owner, requesterId, owner.storiesVisibility)) {
     return next(
       new AppError("You are not authorized to view this stories", 403)
     );
