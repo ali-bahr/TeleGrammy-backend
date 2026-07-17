@@ -299,8 +299,8 @@ const setBlockingStatus = async (blockerId, blockedId, action) => {
 
 const getBlockedUsers = async (userId) => {
   try {
-    const user = await getUserById(userId);
-    if (!user) {
+    const userExists = await User.exists({_id: userId});
+    if (!userExists) {
       throw new AppError("User is not found while searching", 404);
     }
 
@@ -357,27 +357,31 @@ const getBlockedUsers = async (userId) => {
 };
 
 const setReadReceiptsStatus = async (userId, status) => {
-  const user = await getUserByID(userId);
+  const user = await findByIdAndUpdate(
+    userId,
+    {readReceipts: status},
+    {new: true}
+  );
 
   if (!user) {
     throw new AppError("User is not found while searching", 404);
   }
 
-  user.readReceipts = status;
-
-  return user.save();
+  return user;
 };
 
 const setWhoCanAddMe = async (userId, newPolicy) => {
-  const user = await getUserById(userId);
+  const user = await findByIdAndUpdate(
+    userId,
+    {whoCanAddMe: newPolicy},
+    {new: true}
+  );
 
   if (!user) {
     throw new AppError("User is not found while searching", 404);
   }
 
-  user.whoCanAddMe = newPolicy;
-
-  return user.save();
+  return user;
 };
 
 const ackEvent = async (id, chatId, offset) => {

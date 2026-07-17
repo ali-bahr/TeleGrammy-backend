@@ -534,4 +534,91 @@ describe("User Service Test Suites", function () {
       sinon.assert.calledWith(findByIdStub, ID);
     });
   });
+
+  describe("getBlockedUsers Function Test Suite", function () {
+    it("should return the aggregated blocked users when the user exists", async () => {
+      // Must be a valid ObjectId: the aggregation pipeline eagerly builds
+      // `new mongoose.Types.ObjectId(userId)`.
+      const userId = "507f1f77bcf86cd799439011";
+      const blocked = [{userId: "b1", userName: "bob"}];
+      const existsStub = sinon.stub(User, "exists").resolves({_id: userId});
+      const aggregateStub = sinon.stub(User, "aggregate").resolves(blocked);
+
+      const result = await userService.getBlockedUsers(userId);
+
+      expect(result).to.equal(blocked);
+      sinon.assert.calledOnce(existsStub);
+      sinon.assert.calledWith(existsStub, {_id: userId});
+      sinon.assert.calledOnce(aggregateStub);
+    });
+
+    it("should not run the aggregation when the user does not exist", async () => {
+      sinon.stub(User, "exists").resolves(null);
+      const aggregateStub = sinon.stub(User, "aggregate").resolves([]);
+
+      // The function wraps everything in try/catch, so the 404 surfaces as
+      // the generic failure message (pre-existing behavior, preserved).
+      await expect(userService.getBlockedUsers("u1")).to.be.rejectedWith(
+        AppError,
+        "Failed to get blocked users"
+      );
+      sinon.assert.notCalled(aggregateStub);
+    });
+  });
+
+  describe("setReadReceiptsStatus Function Test Suite", function () {
+    it("should update readReceipts in a single query and return the user", async () => {
+      const mockUser = {_id: "u1", readReceipts: false};
+      const updateStub = sinon
+        .stub(User, "findByIdAndUpdate")
+        .resolves(mockUser);
+
+      const result = await userService.setReadReceiptsStatus("u1", false);
+
+      expect(result).to.equal(mockUser);
+      sinon.assert.calledOnce(updateStub);
+      sinon.assert.calledWith(
+        updateStub,
+        "u1",
+        {readReceipts: false},
+        {new: true}
+      );
+    });
+
+    it("should throw a 404 error when the user is not found", async () => {
+      sinon.stub(User, "findByIdAndUpdate").resolves(null);
+
+      await expect(
+        userService.setReadReceiptsStatus("u1", true)
+      ).to.be.rejectedWith(AppError, "User is not found while searching");
+    });
+  });
+
+  describe("setWhoCanAddMe Function Test Suite", function () {
+    it("should update whoCanAddMe in a single query and return the user", async () => {
+      const mockUser = {_id: "u1", whoCanAddMe: "Admins"};
+      const updateStub = sinon
+        .stub(User, "findByIdAndUpdate")
+        .resolves(mockUser);
+
+      const result = await userService.setWhoCanAddMe("u1", "Admins");
+
+      expect(result).to.equal(mockUser);
+      sinon.assert.calledOnce(updateStub);
+      sinon.assert.calledWith(
+        updateStub,
+        "u1",
+        {whoCanAddMe: "Admins"},
+        {new: true}
+      );
+    });
+
+    it("should throw a 404 error when the user is not found", async () => {
+      sinon.stub(User, "findByIdAndUpdate").resolves(null);
+
+      await expect(
+        userService.setWhoCanAddMe("u1", "EveryOne")
+      ).to.be.rejectedWith(AppError, "User is not found while searching");
+    });
+  });
 });
